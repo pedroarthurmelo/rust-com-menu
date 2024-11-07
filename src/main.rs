@@ -11,6 +11,7 @@ use grupo::Grupo;
 use arquivo::Arquivo;
 use diretorio::Diretorio;
 use permissao::Permissao;
+
 /////////////////////////FUNÇÕES MENU////////////////////////////////////////
 //input para ler a escolha do usuário 
 fn ler_escolha() -> String {
@@ -18,6 +19,7 @@ fn ler_escolha() -> String {
     io::stdin().read_line(&mut escolha).expect("erro ao ler mensagem");
     escolha.trim().to_string()
 }
+
 ////////////////////////////////MENU USUÁRIO/////////////////////////////////////////
 fn menu_usuario(usuarios: &mut Vec<Usuario>, grupos: &mut Vec<Grupo>) {
     loop {
@@ -75,8 +77,11 @@ fn adicionar_grupo_usuario(usuarios: &mut Vec<Usuario>, grupos: &mut Vec<Grupo>)
     let mut grupo_encontrado = false;
     for grupo in grupos.iter_mut() {
         if grupo.nome == nome_grupo {
-            usuarios.last_mut().unwrap().adiciona_membro(grupo.clone());
-            println!("Grupo '{}' associado ao usuário {}", nome_grupo, usuarios.last().unwrap().nome);
+            // Adiciona o usuário ao grupo e atualiza o grupo
+            let usuario = usuarios.last_mut().unwrap();
+            usuario.adiciona_membro(grupo.clone());
+            grupo.membros.push(usuario.clone());
+            println!("Grupo '{}' associado ao usuário {}", nome_grupo, usuario.nome);
             grupo_encontrado = true;
             break;
         }
@@ -101,8 +106,14 @@ fn remover_grupo_usuario(usuarios: &mut Vec<Usuario>, grupos: &mut Vec<Grupo>) {
     let mut grupo_encontrado = false;
     for grupo in grupos.iter_mut() {
         if grupo.nome == nome_grupo {
-            usuarios.last_mut().unwrap().remove_grupo(grupo.gid);
-            println!("Grupo '{}' removido do usuário {}", nome_grupo, usuarios.last().unwrap().nome);
+            // Remove o usuário do grupo e atualiza o grupo
+            let usuario = usuarios.last_mut().unwrap();
+            usuario.remove_grupo(grupo.gid);
+            let index = grupo.membros.iter().position(|u| u.uid == usuario.uid);
+            if let Some(index) = index {
+                grupo.membros.remove(index);
+            }
+            println!("Grupo '{}' removido do usuário {}", nome_grupo, usuario.nome);
             grupo_encontrado = true;
             break;
         }
@@ -125,7 +136,7 @@ fn listar_grupos_usuario(usuarios: &Vec<Usuario>) {
 //////////////////////////MENU GRUPO/////////////////////////////////////
 
 
-fn menu_grupo(grupos: &mut Vec<Grupo>, usuarios: &Vec<Usuario>) {
+fn menu_grupo(grupos: &mut Vec<Grupo>, usuarios: &mut Vec<Usuario>) {
     loop {
         println!("\nMenu Grupo:");
         println!("1. Criar Grupo");
@@ -163,7 +174,7 @@ fn criar_grupo(grupos: &mut Vec<Grupo>) {
     println!("Grupo criado com sucesso")
 }
 
-fn adicionar_membro_grupo(grupos: &mut Vec<Grupo>, usuarios: &Vec<Usuario>) {
+fn adicionar_membro_grupo(grupos: &mut Vec<Grupo>, usuarios: &mut Vec<Usuario>) {
     println!("Digite o nome do grupo para adicionar um membro: ");
     let mut nome_grupo_input = String::new();
     io::stdin().read_line(&mut nome_grupo_input).expect("Erro ao ler nome do grupo");
@@ -186,6 +197,8 @@ fn adicionar_membro_grupo(grupos: &mut Vec<Grupo>, usuarios: &Vec<Usuario>) {
                 let usuario = &usuarios[escolha - 1];
                 println!("Você escolheu o usuário: {} (ID: {})", usuario.nome, usuario.uid);
                 grupo.adiciona_membro(usuario.clone());
+                // Atualiza o usuário
+                usuarios[escolha - 1].adiciona_membro(grupo.clone());
                 println!("Usuário adicionado ao grupo!");
             } else {
                 println!("Escolha inválida.");
@@ -201,7 +214,7 @@ fn adicionar_membro_grupo(grupos: &mut Vec<Grupo>, usuarios: &Vec<Usuario>) {
     }
 }
 
-fn remover_membro_grupo(grupos: &mut Vec<Grupo>, usuarios: &Vec<Usuario>) {
+fn remover_membro_grupo(grupos: &mut Vec<Grupo>, usuarios: &mut Vec<Usuario>) {
     println!("Digite o nome do grupo para remover um membro: ");
     let mut nome_grupo_input = String::new();
     io::stdin().read_line(&mut nome_grupo_input).expect("Erro ao ler nome do grupo");
@@ -216,6 +229,13 @@ fn remover_membro_grupo(grupos: &mut Vec<Grupo>, usuarios: &Vec<Usuario>) {
     for grupo in grupos.iter_mut() {
         if grupo.nome == nome_grupo {
             grupo.remover_membro(uid);
+            // Atualiza o usuário
+            for usuario in usuarios.iter_mut() {
+                if usuario.uid == uid {
+                    usuario.remove_grupo(grupo.gid);
+                    break;
+                }
+            }
             println!("Membro removido do grupo!");
             grupo_encontrado = true;
             break;
@@ -344,7 +364,7 @@ fn main() {
         //tipo if else para a escolha do usuário
         match escolha.as_str() {
             "1" => menu_usuario(&mut usuarios, &mut grupos),
-            "2" => menu_grupo(&mut grupos, &usuarios),
+            "2" => menu_grupo(&mut grupos, &mut usuarios),
             "3" => menu_arquivo(),
             "4" => menu_diretorio(),
             "5" => break,

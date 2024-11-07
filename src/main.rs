@@ -256,10 +256,8 @@ fn listar_membros_grupo(grupos: &Vec<Grupo>) {
     let mut grupo_encontrado = false;
     for grupo in grupos.iter() {
         if grupo.nome == nome_grupo {
-            println!("Membros do grupo {}:", grupo.nome);
-            for membro in &grupo.membros {
-                println!("ID: {}, Nome: {}", membro.uid, membro.nome);
-            }
+            // Aqui, você chama o método listar_grupos_membros
+            grupo.listar_grupos_membros();
             grupo_encontrado = true;
             break;
         }
@@ -270,8 +268,9 @@ fn listar_membros_grupo(grupos: &Vec<Grupo>) {
     }
 }
 
-//////////////////////////MENU ARQUIVO///////////////////////////////////
-fn menu_arquivo() {
+////////////////////////// MENU ARQUIVO ///////////////////////////
+
+fn menu_arquivo(arquivos: &mut Vec<Arquivo>, usuarios: &mut Vec<Usuario>, grupos: &mut Vec<Grupo>) {
     loop {
         println!("\nMenu Arquivo:");
         println!("1. Criar Arquivo");
@@ -282,29 +281,146 @@ fn menu_arquivo() {
         let escolha = ler_escolha();
 
         match escolha.as_str() {
-            "1" => criar_arquivo(),
-            "2" => alterar_permissoes_arquivo(),
-            "3" => exibir_info_arquivo(),
-            "4" => return, // volta para o menu principal
+            "1" => criar_arquivo(arquivos, usuarios, grupos),
+            "2" => alterar_permissoes_arquivo(arquivos),
+            "3" => exibir_info_arquivo(arquivos),
+            "4" => return, // Volta para o menu principal
             _ => println!("Opção inválida!"),
         }
     }
 }
 
-fn criar_arquivo() {
-    println!("Criando arquivo...");
-    // Implementação da criação de arquivo
+// Função para criar um novo arquivo
+fn criar_arquivo(arquivos: &mut Vec<Arquivo>, usuarios: &mut Vec<Usuario>, grupos: &mut Vec<Grupo>) {
+    if usuarios.is_empty() || grupos.is_empty() {
+        println!("É necessário ter pelo menos um usuário e um grupo cadastrados.");
+        return;
+    }
+
+    // Solicita o nome e tamanho do arquivo
+    println!("Digite o nome do arquivo: ");
+    let mut nome_input = String::new();
+    io::stdin().read_line(&mut nome_input).expect("Erro ao ler nome do arquivo");
+    let nome = nome_input.trim().to_string();
+
+    println!("Digite o tamanho do arquivo (em bytes): ");
+    let mut tamanho_input = String::new();
+    io::stdin().read_line(&mut tamanho_input).expect("Erro ao ler tamanho");
+    let tamanho: u64 = tamanho_input.trim().parse().expect("Erro ao converter tamanho");
+
+    // Seleciona o usuário dono do arquivo
+    println!("Escolha o número do usuário para ser o dono do arquivo:");
+    for (i, usuario) in usuarios.iter().enumerate() {
+        println!("{}: Nome: {}, UID: {}", i + 1, usuario.nome, usuario.uid);
+    }
+
+    let mut escolha_usuario_input = String::new();
+    io::stdin().read_line(&mut escolha_usuario_input).expect("Erro ao ler escolha");
+    let escolha_usuario: usize = escolha_usuario_input.trim().parse().expect("Erro ao converter escolha");
+
+    let usuario = &usuarios[escolha_usuario - 1];
+
+    // Seleciona o grupo associado ao arquivo
+    println!("Escolha o número do grupo associado ao arquivo:");
+    for (i, grupo) in grupos.iter().enumerate() {
+        println!("{}: Nome: {}, GID: {}", i + 1, grupo.nome, grupo.gid);
+    }
+
+    let mut escolha_grupo_input = String::new();
+    io::stdin().read_line(&mut escolha_grupo_input).expect("Erro ao ler escolha");
+    let escolha_grupo: usize = escolha_grupo_input.trim().parse().expect("Erro ao converter escolha");
+
+    let grupo = &grupos[escolha_grupo - 1];
+
+    // Cria o arquivo com permissões padrão
+    let novo_arquivo = Arquivo::new(nome.clone(), tamanho, usuario.clone(), grupo.clone());
+
+    arquivos.push(novo_arquivo);
+    println!("Arquivo '{}' criado com sucesso!", nome);
 }
 
-fn alterar_permissoes_arquivo() {
-    println!("Alterando permissões do arquivo...");
-    // Implementação da alteração de permissões do arquivo
+// Função para alterar as permissões de um arquivo
+fn alterar_permissoes_arquivo(arquivos: &mut Vec<Arquivo>) {
+    if arquivos.is_empty() {
+        println!("Nenhum arquivo cadastrado.");
+        return;
+    }
+
+    println!("Escolha o número do arquivo para alterar permissões:");
+    for (i, arquivo) in arquivos.iter().enumerate() {
+        println!("{}: Arquivo: {}, Dono: {}, Grupo: {}", i + 1, arquivo.nome, arquivo.usuario.nome, arquivo.grupo.nome);
+    }
+
+    let mut escolha_input = String::new();
+    io::stdin().read_line(&mut escolha_input).expect("Erro ao ler escolha");
+    let escolha: usize = escolha_input.trim().parse().expect("Erro ao converter escolha");
+
+    if escolha > 0 && escolha <= arquivos.len() {
+        let arquivo = &mut arquivos[escolha - 1];
+
+        println!("Digite as permissões do arquivo (dono, grupo, outros):");
+        println!("Formato: XXX (onde cada X é um número entre 0 e 7, por exemplo, 755)");
+
+        let mut permissoes_input = String::new();
+        io::stdin().read_line(&mut permissoes_input).expect("Erro ao ler permissões");
+
+        // Verifica se o usuário forneceu permissões no formato correto
+        let permissoes: Vec<&str> = permissoes_input.trim().split_whitespace().collect();
+        if permissoes.len() == 1 {
+            let permissoes_num: u32 = permissoes[0].parse().unwrap_or(0);
+
+            let dono = (permissoes_num / 100) % 10;
+            let grupo = (permissoes_num / 10) % 10;
+            let outros = permissoes_num % 10;
+
+            // Converte as permissões numéricas em permissões booleanas (leitura, escrita, execução)
+            let nova_permissao = (
+                Permissao::new(dono >= 4, dono >= 2, dono >= 1),
+                Permissao::new(grupo >= 4, grupo >= 2, grupo >= 1),
+                Permissao::new(outros >= 4, outros >= 2, outros >= 1),
+            );
+
+            arquivo.alterar_permissao(nova_permissao);
+            println!("Permissões do arquivo '{}' alteradas.", arquivo.nome);
+        } else {
+            // Caso o usuário não forneça permissões, usa as permissões padrão
+            println!("Formato inválido ou nenhum valor fornecido. Usando permissões padrão.");
+            arquivo.alterar_permissao((
+                Permissao::new(false, true, false), // Padrão para dono
+                Permissao::new(false, true, false), // Padrão para grupo
+                Permissao::new(false, true, false), // Padrão para outros
+            ));
+        }
+    } else {
+        println!("Escolha inválida.");
+    }
 }
 
-fn exibir_info_arquivo() {
-    println!("Exibindo informações do arquivo...");
-    // Implementação da exibição de informações do arquivo
+
+// Função para exibir informações de um arquivo
+fn exibir_info_arquivo(arquivos: &Vec<Arquivo>) {
+    if arquivos.is_empty() {
+        println!("Nenhum arquivo cadastrado.");
+        return;
+    }
+
+    println!("Escolha o número do arquivo para exibir informações:");
+    for (i, arquivo) in arquivos.iter().enumerate() {
+        println!("{}: Arquivo: {}, Dono: {}, Grupo: {}", i + 1, arquivo.nome, arquivo.usuario.nome, arquivo.grupo.nome);
+    }
+
+    let mut escolha_input = String::new();
+    io::stdin().read_line(&mut escolha_input).expect("Erro ao ler escolha");
+    let escolha: usize = escolha_input.trim().parse().expect("Erro ao converter escolha");
+
+    if escolha > 0 && escolha <= arquivos.len() {
+        let arquivo = &arquivos[escolha - 1];
+        arquivo.stat();
+    } else {
+        println!("Escolha inválida.");
+    }
 }
+
 //////////////////////////MENU DIRETÓRIO//////////////////////////////
 fn menu_diretorio() {
     loop {
@@ -351,6 +467,7 @@ fn listar_conteudo_diretorio() {
 fn main() {
     let mut grupos: Vec<Grupo> = Vec::new();
     let mut usuarios: Vec<Usuario> = Vec::new();
+    let mut arquivos: Vec<Arquivo> = Vec::new();
     //menu principal
     loop {
         println!("\nMenu Principal");
@@ -365,7 +482,7 @@ fn main() {
         match escolha.as_str() {
             "1" => menu_usuario(&mut usuarios, &mut grupos),
             "2" => menu_grupo(&mut grupos, &mut usuarios),
-            "3" => menu_arquivo(),
+            "3" => menu_arquivo(&mut arquivos, &mut usuarios, &mut grupos),
             "4" => menu_diretorio(),
             "5" => break,
             _ => println!("Opção Inválida!"),

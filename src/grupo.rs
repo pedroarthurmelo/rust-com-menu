@@ -28,7 +28,7 @@ impl Grupo {
     }
 
     // Lista todos os membros do grupo
-    pub fn listar_grupos(&self) {
+    pub fn listar_grupos_membros(&self) {
         for membro in &self.membros {
             println!("Membro: {} (uid: {})", membro.nome, membro.uid);
         }

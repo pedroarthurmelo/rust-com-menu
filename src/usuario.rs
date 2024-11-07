@@ -22,14 +22,16 @@ impl Usuario {
     }
 
     // Remove um grupo do vetor de grupos do usuário, filtrando pelo nome do grupo
-    pub fn remove_grupo(&mut self, nome_grupo: &str) {
-        self.grupo.retain(|g| g.nome != nome_grupo);  //retain filtra os
-    }
+    pub fn remove_grupo(&mut self, gid: u16) {
+        self.grupo.retain(|g| g.gid != gid);
+    }  //retain filtra os
+    
 
     // Lista todos os grupos aos quais o usuário pertence
     pub fn listar_grupos(&self) {
-        for grupo in &self.grupo{
-            println!("Grupo: {} (gid: {})", grupo.nome, grupo.gid);
+        for grupo in &self.grupo {
+            println!("Grupo: {} (GID: {})", grupo.nome, grupo.gid);
         }
-    }
+    
+    } 
 }

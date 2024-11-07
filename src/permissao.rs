@@ -1,3 +1,4 @@
+#[derive(Clone)]
 pub struct Permissao{
     leitura: bool,
     escrita: bool,

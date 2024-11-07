@@ -2,7 +2,7 @@ use crate::usuario::Usuario;
 use crate::grupo::Grupo;
 use crate::permissao::Permissao;
 
-
+#[derive(Clone)]
 pub struct Arquivo {
     pub nome: String,
     pub tamanho: u64,
@@ -14,7 +14,7 @@ pub struct Arquivo {
 impl Arquivo {
     // Método para criar um novo arquivo com permissões padrão
     pub fn new(nome: String, tamanho: u64, usuario: Usuario, grupo: Grupo) -> Arquivo {
-        // Permissões padrão: leitura = false, escrita = true, execução = false
+        // Permissões padrão: leitura = false, escrita = true, execução = falsef
         let permissoes = (
             Permissao::new(false, true, false), // Permissão para dono
             Permissao::new(false, true, false), // Permissão para grupo
